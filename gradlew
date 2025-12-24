@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
-DEFAULT_JVM_OPTS='"'"'"'"'"'"'"'"'-Xmx2048m -Dfile.encoding=UTF-8'"'"'"'"'"'"'"'"'
+DEFAULT_JVM_OPTS='-Xmx2048m -Dfile.encoding=UTF-8'
 
 # Use the maximum available, or set MAX_FD != -1 to use that value.
 MAX_FD=maximum
@@ -44,6 +44,44 @@ case "`uname`" in
     msys=true
     ;;
 esac
+
+# Attempt to set APP_HOME
+
+# Resolve links: $0 may be a link
+app_path=$0
+
+# Need this for daisy-chained symlinks.
+while
+    APP_HOME=`dirname "$app_path"`
+    fname=`basename "$app_path"`
+    [ -h "$APP_HOME/$fname" ]
+do
+    l=`ls -ld "$APP_HOME/$fname"`
+    case $l in
+      *\"*\"*)
+        # BSD style
+        link=`echo $l | sed -E 's/.*"(.*)".*/\1/g'`
+        ;;
+      *)
+        # GNU style
+        link=`echo $l | sed -e 's/.*-> //'`
+        ;;
+    esac
+
+    case $link in
+      /*)
+        app_path=$link
+        ;;
+      *)
+        app_path=$APP_HOME/$link
+        ;;
+    esac
+done
+
+# Set search paths
+APP_HOME_DIR=`dirname "$app_path"`/..
+APP_BASE_NAME=`basename "$0"`
+APP_HOME=`cd "$APP_HOME_DIR" && pwd`
 
 # For Cygwin or MSYS, switch paths to Windows format before running java
 if $cygwin || $msys ; then
@@ -104,5 +142,7 @@ if ! "$cygwin" && ! "$darwin" ; then
     fi
 fi
 
-# Launch the application
+# Collect all arguments for the java command:
+#   * Based on classpath
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 "$JAVACMD" "${JVM_OPTS[@]}" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
