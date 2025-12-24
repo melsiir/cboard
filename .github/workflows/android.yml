@@ -23,13 +23,18 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
-        packages: tools platform-tools build-tools-33.0.0 platforms-android-33
+        packages: tools platform-tools build-tools platforms-android-33
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew
 
     - name: Validate Gradle wrapper
       run: ./gradlew --version
+
+    - name: Run Lint
+      run: ./gradlew lint --no-daemon
+      env:
+        JAVA_OPTS: -Xmx2048m
 
     - name: Build Debug APK
       run: |
