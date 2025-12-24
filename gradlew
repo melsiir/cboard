@@ -79,9 +79,16 @@ do
 done
 
 # Set search paths
-APP_HOME_DIR=`dirname "$app_path"`/..
+APP_HOME_DIR=`dirname "$app_path"`
 APP_BASE_NAME=`basename "$0"`
-APP_HOME=`cd "$APP_HOME_DIR" && pwd`
+
+# If APP_HOME_DIR is '.', we need to resolve to the current directory
+if [ "$APP_HOME_DIR" = "." ]; then
+    APP_HOME_DIR=`pwd`
+else
+    APP_HOME_DIR=`cd "$APP_HOME_DIR" && pwd`
+fi
+APP_HOME="$APP_HOME_DIR"
 
 # For Cygwin or MSYS, switch paths to Windows format before running java
 if $cygwin || $msys ; then
@@ -90,12 +97,9 @@ if $cygwin || $msys ; then
   APP_HOME_DIR="`cygpath --path --mixed "$APP_HOME_DIR"`"
 fi
 
-# Split up the JVM_OPTS And GRADLE_OPTS values into an array, following the shell quoting and substitution rules
-function splitJvmOpts() {
-    JVM_OPTS=("$@")
-}
-eval splitJvmOpts $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS
-JVM_OPTS[${#JVM_OPTS[*]}]="-Dorg.gradle.appname=$APP_BASE_NAME"
+# For POSIX shells, we need to handle JVM_OPTS differently since arrays aren't supported
+# Combine all JVM options into a single string
+JVM_OPTS="$DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS -Dorg.gradle.appname=$APP_BASE_NAME"
 
 # Find java from JAVA_HOME
 if [ -n "$JAVA_HOME" ] ; then
@@ -108,15 +112,13 @@ if [ -n "$JAVA_HOME" ] ; then
     if [ ! -x "$JAVACMD" ] ; then
         die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
 
-Please set the JAVA_HOME variable in your environment to match the
-location of your Java installation."
+Please set the JAVA_HOME variable in your environment to match the location of your Java installation."
     fi
 else
     JAVACMD="java"
     which java >/dev/null 2>&1 || die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
 
-Please set the JAVA_HOME variable in your environment to match the
-location of your Java installation."
+Please set the JAVA_HOME variable in your environment to match the location of your Java installation."
 fi
 
 # Increase the maximum file descriptors if we can.
@@ -145,4 +147,4 @@ fi
 # Collect all arguments for the java command:
 #   * Based on classpath
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
-"$JAVACMD" "${JVM_OPTS[@]}" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+"$JAVACMD" $JVM_OPTS -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
