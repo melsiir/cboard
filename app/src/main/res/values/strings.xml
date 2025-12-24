@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">cboard</string>
+    <string name="settings_title">cboard Settings</string>
+    <string name="keyboard_height_title">Keyboard Height</string>
+    <string name="button_size_title">Button Size</string>
+    <string name="export_settings_title">Export Settings</string>
+    <string name="import_settings_title">Import Settings</string>
+    <string name="customize_layout_title">Customize Keyboard Layout</string>
+    <string name="keyboard_height_summary">Adjust the height of the keyboard (30-70%)</string>
+    <string name="button_size_summary">Adjust the size of the keys</string>
+    <string name="export_settings_summary">Save your keyboard configuration to a file</string>
+    <string name="import_settings_summary">Load your keyboard configuration from a file</string>
+    <string name="customize_layout_summary">Add, remove, or rearrange keys on the keyboard</string>
+</resources>
