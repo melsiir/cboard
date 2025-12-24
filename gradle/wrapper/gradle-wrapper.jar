@@ -1,0 +1,4 @@
+# This is a placeholder for the Gradle Wrapper JAR file
+# In a real Android project, this would be a binary file: gradle-wrapper.jar
+# The actual file would contain the Gradle Wrapper classes needed to bootstrap the build
+# This file is typically downloaded from the Gradle distribution when you run gradle wrapper
