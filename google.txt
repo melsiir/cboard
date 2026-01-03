@@ -1,0 +1,40 @@
+This error occurs because Jetpack Compose requires a LifecycleOwner to manage its state, but a standard Android InputMethodService (keyboard) does not provide one by default.
+When the ComposeView is attached to the window, it searches the view hierarchy for a owner. Since an IME (Input Method Editor) window isn't an Activity or Fragment, it fails to find one, resulting in the IllegalStateException: ViewTreeLifecycleOwner not found.
+How to Fix It
+You must manually assign a LifecycleOwner, SavedStateRegistryOwner, and ViewModelStoreOwner to your service's decor view so Compose can function.
+1. Implement LifecycleOwner in your Service
+Your InputMethodService should implement LifecycleOwner, ViewModelStoreOwner, and SavedStateRegistryOwner.
+A simpler way is to use the LifecycleService pattern or manually delegate to a LifecycleRegistry.
+2. Set the Owners in onCreateInputView()
+Before returning your ComposeView in onCreateInputView(), you must link the view to the service's lifecycle:
+kotlin
+override fun onCreateInputView(): View {
+    val composeView = ComposeView(this)
+
+    // 1. Ensure the window's decor view has the owners set
+    val window = window?.window ?: return composeView
+    val decorView = window.decorView
+
+    ViewTreeLifecycleOwner.set(decorView, this)
+    ViewTreeViewModelStoreOwner.set(decorView, this)
+    ViewTreeSavedStateRegistryOwner.set(decorView, this)
+
+    composeView.setContent {
+        // Your Keyboard UI Here
+    }
+
+    return composeView
+}
+Use code with caution.
+
+Necessary Dependencies
+Ensure you have the following in your build.gradle to access the ViewTree helper classes:
+gradle
+implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7"
+implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.8.7"
+implementation "androidx.savedstate:savedstate-ktx:1.2.1"
+Use code with caution.
+
+Why this happens specifically in Keyboards
+Standard Android views work fine without a lifecycle owner, but Jetpack Compose relies on the Recomposer, which needs to know when the screen is active or destroyed to prevent memory leaks and unnecessary UI updates. Because a keyboard is a Service rather than an Activity, the automatic "ViewTree" lookup fails until you manually bridge them.
+AI can make mistakes, so double-check responses

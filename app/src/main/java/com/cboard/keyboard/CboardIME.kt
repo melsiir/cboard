@@ -2,6 +2,7 @@ package com.cboard.keyboard
 
 import android.content.Context
 import android.inputmethodservice.InputMethodService
+import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import androidx.compose.foundation.layout.*
@@ -20,26 +21,88 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.*
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.AbstractSavedStateViewModelFactory
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.compose.ui.platform.ViewTreeLifecycleOwner
+import androidx.compose.ui.platform.ViewTreeViewModelStoreOwner
+import androidx.compose.ui.platform.ViewTreeSavedStateRegistryOwner
 import com.cboard.keyboard.data.KeyboardSettings
 import com.cboard.keyboard.utils.SettingsManager
 
-class CboardIME : InputMethodService() {
+class CboardIME : InputMethodService(), LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
 
     private lateinit var settingsManager: SettingsManager
     private var settings = KeyboardSettings()
+    private val lifecycleRegistry = LifecycleRegistry(this)
+    private val savedStateRegistryController = SavedStateRegistryController.create(this)
+    private val viewModelStore = ViewModelStore()
+
+    override val lifecycle: Lifecycle
+        get() = lifecycleRegistry
+
+    override val viewModelStore: ViewModelStore
+        get() = viewModelStore
+
+    override val savedStateRegistry: SavedStateRegistry
+        get() = savedStateRegistryController.savedStateRegistry
 
     override fun onCreate() {
         super.onCreate()
+        savedStateRegistryController.performRestore(null)
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
         settingsManager = SettingsManager(this)
         settings = settingsManager.loadSettings()
     }
 
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        lifecycleRegistry.currentState = Lifecycle.State.STARTED
+    }
+
+    override fun onDestroy() {
+        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        super.onDestroy()
+    }
+
     override fun onCreateInputView(): View {
-        return ComposeView(this).apply {
+        val composeView = ComposeView(this).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-            setContent {
-                CboardKeyboard()
-            }
+        }
+
+        // Set the ViewTree owners to make Compose work in the InputMethodService
+        ViewTreeLifecycleOwner.set(composeView, this)
+        ViewTreeViewModelStoreOwner.set(composeView, this)
+        ViewTreeSavedStateRegistryOwner.set(composeView, this)
+
+        composeView.setContent {
+            CboardKeyboard()
+        }
+
+        return composeView
+    }
+
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        // Ensure the lifecycle is in the correct state when input view starts
+        if (lifecycleRegistry.currentState == Lifecycle.State.CREATED) {
+            lifecycleRegistry.currentState = Lifecycle.State.STARTED
+        }
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        super.onFinishInputView(finishingInput)
+        // Update lifecycle state when input view finishes
+        if (lifecycleRegistry.currentState == Lifecycle.State.STARTED) {
+            lifecycleRegistry.currentState = Lifecycle.State.CREATED
         }
     }
 
