@@ -1,0 +1,8 @@
+SDK: 36
+PRODUCT_NAME: a17xx
+DEVICE_NAME: a17
+BOARD_NAME: a17
+SUPPORTED_ABIS: arm64-v8a, armeabi-v7a, armeabi
+MANUFACTURER: samsung
+BRAND: samsung
+MODEL: SM-A175F

@@ -63,12 +63,10 @@ fun CustomLayoutEditor(
                         onSettingsChange(settings.copy(customLayout = rows.toMap()))
                     },
                     onDeleteRow = {
-                        val updatedRows = rows.filter { it.first != index }.mapIndexed { i, pair -> 
-                            if (i < index) pair else (i to pair.second) 
-                        }
+                        val updatedRows = rows.filter { it.first != index }
                         rows = updatedRows
                         onSettingsChange(settings.copy(
-                            customLayout = rows.mapIndexed { i, pair -> i to pair.second }.toMap()
+                            customLayout = updatedRows.mapIndexed { i, pair -> i to pair.second }.toMap()
                         ))
                     }
                 )

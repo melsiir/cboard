@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.dp
 import androidx.core.content.res.ResourcesCompat
 import android.view.KeyEvent
@@ -34,6 +35,8 @@ class CboardIME : InputMethodService() {
 
     override fun onCreateInputView(): View {
         return ComposeView(this).apply {
+            // Set the composition strategy to dispose of the composition when the view is detached
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 CboardKeyboard()
             }
@@ -60,9 +63,16 @@ class CboardIME : InputMethodService() {
                 }
             } else {
                 // Render custom keyboard layout rows
-                settings.customLayout.forEach { (_, row) ->
+                val layoutRows = settings.customLayout.toSortedMap()
+                layoutRows.forEach { (_, row) ->
+                    val processedRow = if (isCapsLock.value || isShifted.value) {
+                        row.map { if (it.length == 1 && it[0].isLetter()) it.uppercase() else it }
+                    } else {
+                        row
+                    }
+
                     KeyboardRow(
-                        keys = if (isCapsLock.value || isShifted.value) row.map { if (it.length == 1 && it[0].isLetter()) it.uppercase() else it } else row,
+                        keys = processedRow,
                         onKeyClick = { key ->
                             handleKeyInput(key, isCapsLock, isShifted, isNumberMode)
                             // Reset shift after letter input (if not caps lock)
@@ -197,11 +207,21 @@ class CboardIME : InputMethodService() {
             KeyButton(
                 label = "Paste",
                 onClick = {
-                    val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    val clipData = clipboardManager.primaryClip
-                    if (clipData != null && clipData.itemCount > 0) {
-                        val text = clipData.getItemAt(0).text
-                        currentInputConnection?.commitText(text, 1)
+                    try {
+                        val inputConnection = currentInputConnection
+                        if (inputConnection != null) {
+                            val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            val clipData = clipboardManager.primaryClip
+                            if (clipData != null && clipData.itemCount > 0) {
+                                val text = clipData.getItemAt(0).text
+                                if (text != null) {
+                                    inputConnection.commitText(text, 1)
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Handle potential errors when pasting
+                        e.printStackTrace()
                     }
                 },
                 modifier = Modifier.weight(1f)
@@ -225,29 +245,51 @@ class CboardIME : InputMethodService() {
         isShifted: MutableState<Boolean>,
         isNumberMode: MutableState<Boolean>
     ) {
-        val currentInputConnection = currentInputConnection
-        if (currentInputConnection == null) {
+        val inputConnection = currentInputConnection
+        if (inputConnection == null) {
             // If there's no input connection, we can't send text
             return
         }
 
         when (key) {
-            "\b" -> currentInputConnection.deleteSurroundingText(1, 0) // Backspace
+            "\b" -> {
+                try {
+                    inputConnection.deleteSurroundingText(1, 0) // Backspace
+                } catch (e: Exception) {
+                    // Handle potential errors when deleting text
+                    e.printStackTrace()
+                }
+            }
             "\n" -> {
-                currentInputConnection.commitText("\n", 1)
-                // Reset shift after Enter
-                if (!isCapsLock.value) isShifted.value = false
+                try {
+                    inputConnection.commitText("\n", 1)
+                    // Reset shift after Enter
+                    if (!isCapsLock.value) isShifted.value = false
+                } catch (e: Exception) {
+                    // Handle potential errors when committing text
+                    e.printStackTrace()
+                }
             }
             " " -> {
-                currentInputConnection.commitText(" ", 1)
-                // Reset shift after space (for typing convenience)
-                if (!isCapsLock.value) isShifted.value = false
+                try {
+                    inputConnection.commitText(" ", 1)
+                    // Reset shift after space (for typing convenience)
+                    if (!isCapsLock.value) isShifted.value = false
+                } catch (e: Exception) {
+                    // Handle potential errors when committing text
+                    e.printStackTrace()
+                }
             }
             else -> {
-                currentInputConnection.commitText(key, 1)
-                // Reset shift after letter input (if not caps lock)
-                if (!isCapsLock.value && key.length == 1 && key[0].isLetter()) {
-                    isShifted.value = false
+                try {
+                    inputConnection.commitText(key, 1)
+                    // Reset shift after letter input (if not caps lock)
+                    if (!isCapsLock.value && key.length == 1 && key[0].isLetter()) {
+                        isShifted.value = false
+                    }
+                } catch (e: Exception) {
+                    // Handle potential errors when committing text
+                    e.printStackTrace()
                 }
             }
         }
