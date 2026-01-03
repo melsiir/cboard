@@ -1,6 +1,9 @@
 package com.cboard.keyboard
 
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
+import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -45,19 +48,52 @@ fun MainScreen(modifier: Modifier = Modifier) {
         )
 
         Text(
-            text = "Enable the keyboard in Settings > System > Languages & Input > On-screen keyboard",
+            text = "1. Enable the keyboard in Settings > System > Languages & Input > On-screen keyboard",
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Text(
+            text = "2. After enabling, return here and tap 'Switch to cboard Keyboard'",
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
         Button(
             onClick = {
-                val intent = android.content.Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS)
-                intent.putExtra(android.provider.Settings.EXTRA_INPUT_METHOD_ID, context.packageName + "/.CboardIME")
+                val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
                 context.startActivity(intent)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+        ) {
+            Text("Open Keyboard Settings")
+        }
+
+        Button(
+            onClick = {
+                val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
+                intent.putExtra(Settings.EXTRA_INPUT_METHOD_ID, "${context.packageName}/.CboardIME")
+                context.startActivity(intent)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary
+            )
+        ) {
+            Text("Directly Open cboard Settings")
+        }
+
+        Button(
+            onClick = {
+                val imm = context.getSystemService(InputMethodManager::class.java)
+                imm.showInputMethodPicker()
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Open Keyboard Settings")
+            Text("Switch to cboard Keyboard")
         }
     }
 }
