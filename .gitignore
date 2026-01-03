@@ -1,0 +1,17 @@
+# Gradle (sdk .DS_StoreBuild/
+.cxx/
+*.aabolders
+captures/
+gradle-extracted/
+.externalNativeBuild/
+.cxx/
+*.aab
+*.apk
+output-met.externalNativeBuild/
+output-metadata.json
+
+# IntelliJ
+*.iml
+.idea/
+build/
+.gradle
