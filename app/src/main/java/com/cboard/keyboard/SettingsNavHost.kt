@@ -33,7 +33,7 @@ fun SettingsNavHost() {
             val context = LocalContext.current
             val settingsManager = remember { SettingsManager(context) }
             val initialSettings = remember { settingsManager.loadSettings() }
-            val settingsState = rememberSaveable {
+            val settingsState = remember {
                 mutableStateOf(initialSettings)
             }
 
