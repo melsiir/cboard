@@ -24,10 +24,7 @@ import com.cboard.keyboard.utils.SettingsManager
 class CboardIME : InputMethodService() {
 
     private lateinit var settingsManager: SettingsManager
-    private var settings by mutableStateOf(KeyboardSettings())
-    private var isCapsLock by mutableStateOf(false)
-    private var isShifted by mutableStateOf(false)
-    private var isNumberMode by mutableStateOf(false)
+    private var settings = KeyboardSettings()
 
     override fun onCreate() {
         super.onCreate()
@@ -45,6 +42,10 @@ class CboardIME : InputMethodService() {
 
     @Composable
     fun CboardKeyboard() {
+        val isCapsLock = remember { mutableStateOf(false) }
+        val isShifted = remember { mutableStateOf(false) }
+        val isNumberMode = remember { mutableStateOf(false) }
+
         val keyboardHeight = remember { settings.keyboardHeight.dp }
 
         Column(
@@ -52,28 +53,38 @@ class CboardIME : InputMethodService() {
                 .fillMaxWidth()
                 .height(keyboardHeight)
         ) {
-            if (isNumberMode) {
+            if (isNumberMode.value) {
                 // Show number/symbol layout
                 settings.customRows.forEach { row ->
-                    ProgrammingSymbolsRow(row)
+                    ProgrammingSymbolsRow(row, isCapsLock, isShifted, isNumberMode)
                 }
             } else {
                 // Render custom keyboard layout rows
                 settings.customLayout.forEach { (_, row) ->
                     KeyboardRow(
-                        keys = if (isCapsLock || isShifted) row.map { if (it.length == 1 && it[0].isLetter()) it.uppercase() else it } else row,
-                        onKeyClick = { key -> handleKeyInput(key) }
+                        keys = if (isCapsLock.value || isShifted.value) row.map { if (it.length == 1 && it[0].isLetter()) it.uppercase() else it } else row,
+                        onKeyClick = { key ->
+                            handleKeyInput(key, isCapsLock, isShifted, isNumberMode)
+                            // Reset shift after letter input (if not caps lock)
+                            if (!isCapsLock.value && key.length == 1 && key[0].isLetter()) {
+                                isShifted.value = false
+                            }
+                        }
                     )
                 }
 
                 // Custom symbol rows for programming
                 settings.customRows.forEach { row ->
-                    ProgrammingSymbolsRow(row)
+                    ProgrammingSymbolsRow(row, isCapsLock, isShifted, isNumberMode)
                 }
             }
 
             // Control row: Space, shift, backspace, enter
-            ControlRow()
+            ControlRow(
+                isCapsLock = isCapsLock,
+                isShifted = isShifted,
+                isNumberMode = isNumberMode
+            )
         }
     }
 
@@ -109,7 +120,12 @@ class CboardIME : InputMethodService() {
     }
 
     @Composable
-    fun ProgrammingSymbolsRow(keys: List<String>) {
+    fun ProgrammingSymbolsRow(
+        keys: List<String>,
+        isCapsLock: MutableState<Boolean>,
+        isShifted: MutableState<Boolean>,
+        isNumberMode: MutableState<Boolean>
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -118,7 +134,7 @@ class CboardIME : InputMethodService() {
             keys.forEach { symbol ->
                 KeyButton(
                     label = symbol,
-                    onClick = { handleKeyInput(symbol) },
+                    onClick = { handleKeyInput(symbol, isCapsLock, isShifted, isNumberMode) },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -126,26 +142,30 @@ class CboardIME : InputMethodService() {
     }
 
     @Composable
-    fun ControlRow() {
+    fun ControlRow(
+        isCapsLock: MutableState<Boolean>,
+        isShifted: MutableState<Boolean>,
+        isNumberMode: MutableState<Boolean>
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(settings.buttonSize.dp)
         ) {
             KeyButton(
-                label = if (isCapsLock) "CAPS" else "a/A",
+                label = if (isCapsLock.value) "CAPS" else "a/A",
                 onClick = {
-                    if (isNumberMode) {
+                    if (isNumberMode.value) {
                         // If in number mode, just exit number mode
-                        isNumberMode = false
+                        isNumberMode.value = false
                     } else {
-                        if (isShifted && !isCapsLock) {
+                        if (isShifted.value && !isCapsLock.value) {
                             // Double tap shift to lock caps
-                            isCapsLock = true
-                            isShifted = false
+                            isCapsLock.value = true
+                            isShifted.value = false
                         } else {
-                            isShifted = !isShifted
-                            if (isCapsLock) isCapsLock = false
+                            isShifted.value = !isShifted.value
+                            if (isCapsLock.value) isCapsLock.value = false
                         }
                     }
                 },
@@ -153,24 +173,24 @@ class CboardIME : InputMethodService() {
             )
 
             KeyButton(
-                label = if (isNumberMode) "ABC" else "123",
+                label = if (isNumberMode.value) "ABC" else "123",
                 onClick = {
-                    isNumberMode = !isNumberMode
+                    isNumberMode.value = !isNumberMode.value
                     // Reset shift when switching modes
-                    if (!isCapsLock) isShifted = false
+                    if (!isCapsLock.value) isShifted.value = false
                 },
                 modifier = Modifier.weight(1f)
             )
 
             KeyButton(
                 label = " ",
-                onClick = { handleKeyInput(" ") },
+                onClick = { handleKeyInput(" ", isCapsLock, isShifted, isNumberMode) },
                 modifier = Modifier.weight(3f)
             )
 
             KeyButton(
                 label = "←",
-                onClick = { handleKeyInput("\b") },
+                onClick = { handleKeyInput("\b", isCapsLock, isShifted, isNumberMode) },
                 modifier = Modifier.weight(1f)
             )
 
@@ -190,34 +210,44 @@ class CboardIME : InputMethodService() {
             KeyButton(
                 label = "Enter",
                 onClick = {
-                    handleKeyInput("\n")
+                    handleKeyInput("\n", isCapsLock, isShifted, isNumberMode)
                     // Reset number mode after Enter for convenience
-                    if (!isCapsLock) isNumberMode = false
+                    if (!isCapsLock.value) isNumberMode.value = false
                 },
                 modifier = Modifier.weight(1.5f)
             )
         }
     }
 
-    private fun handleKeyInput(key: String) {
+    private fun handleKeyInput(
+        key: String,
+        isCapsLock: MutableState<Boolean>,
+        isShifted: MutableState<Boolean>,
+        isNumberMode: MutableState<Boolean>
+    ) {
         val currentInputConnection = currentInputConnection
+        if (currentInputConnection == null) {
+            // If there's no input connection, we can't send text
+            return
+        }
+
         when (key) {
             "\b" -> currentInputConnection.deleteSurroundingText(1, 0) // Backspace
             "\n" -> {
                 currentInputConnection.commitText("\n", 1)
                 // Reset shift after Enter
-                if (!isCapsLock) isShifted = false
+                if (!isCapsLock.value) isShifted.value = false
             }
             " " -> {
                 currentInputConnection.commitText(" ", 1)
                 // Reset shift after space (for typing convenience)
-                if (!isCapsLock) isShifted = false
+                if (!isCapsLock.value) isShifted.value = false
             }
             else -> {
                 currentInputConnection.commitText(key, 1)
                 // Reset shift after letter input (if not caps lock)
-                if (!isCapsLock && key.length == 1 && key[0].isLetter()) {
-                    isShifted = false
+                if (!isCapsLock.value && key.length == 1 && key[0].isLetter()) {
+                    isShifted.value = false
                 }
             }
         }
