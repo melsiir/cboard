@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cboard.keyboard.ui.theme.CboardTheme
@@ -30,6 +31,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainScreen(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -47,7 +50,11 @@ fun MainScreen(modifier: Modifier = Modifier) {
         )
 
         Button(
-            onClick = { /* Open keyboard settings */ },
+            onClick = {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS)
+                intent.putExtra(android.provider.Settings.EXTRA_INPUT_METHOD_ID, context.packageName + "/.CboardIME")
+                context.startActivity(intent)
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Open Keyboard Settings")

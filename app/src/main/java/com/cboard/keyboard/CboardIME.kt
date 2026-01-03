@@ -1,5 +1,6 @@
 package com.cboard.keyboard
 
+import android.content.Context
 import android.inputmethodservice.InputMethodService
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -24,6 +25,9 @@ class CboardIME : InputMethodService() {
 
     private lateinit var settingsManager: SettingsManager
     private var settings by mutableStateOf(KeyboardSettings())
+    private var isCapsLock by mutableStateOf(false)
+    private var isShifted by mutableStateOf(false)
+    private var isNumberMode by mutableStateOf(false)
 
     override fun onCreate() {
         super.onCreate()
@@ -48,17 +52,24 @@ class CboardIME : InputMethodService() {
                 .fillMaxWidth()
                 .height(keyboardHeight)
         ) {
-            // Render custom keyboard layout rows
-            settings.customLayout.forEach { (_, row) ->
-                KeyboardRow(
-                    keys = row,
-                    onKeyClick = { key -> handleKeyInput(key) }
-                )
-            }
+            if (isNumberMode) {
+                // Show number/symbol layout
+                settings.customRows.forEach { row ->
+                    ProgrammingSymbolsRow(row)
+                }
+            } else {
+                // Render custom keyboard layout rows
+                settings.customLayout.forEach { (_, row) ->
+                    KeyboardRow(
+                        keys = if (isCapsLock || isShifted) row.map { if (it.length == 1 && it[0].isLetter()) it.uppercase() else it } else row,
+                        onKeyClick = { key -> handleKeyInput(key) }
+                    )
+                }
 
-            // Custom symbol rows for programming
-            settings.customRows.forEach { row ->
-                ProgrammingSymbolsRow(row)
+                // Custom symbol rows for programming
+                settings.customRows.forEach { row ->
+                    ProgrammingSymbolsRow(row)
+                }
             }
 
             // Control row: Space, shift, backspace, enter
@@ -122,14 +133,32 @@ class CboardIME : InputMethodService() {
                 .height(settings.buttonSize.dp)
         ) {
             KeyButton(
-                label = "a/A",
-                onClick = { /* Handle shift */ },
+                label = if (isCapsLock) "CAPS" else "a/A",
+                onClick = {
+                    if (isNumberMode) {
+                        // If in number mode, just exit number mode
+                        isNumberMode = false
+                    } else {
+                        if (isShifted && !isCapsLock) {
+                            // Double tap shift to lock caps
+                            isCapsLock = true
+                            isShifted = false
+                        } else {
+                            isShifted = !isShifted
+                            if (isCapsLock) isCapsLock = false
+                        }
+                    }
+                },
                 modifier = Modifier.weight(1f)
             )
 
             KeyButton(
-                label = "ABC",
-                onClick = { /* Switch to letters */ },
+                label = if (isNumberMode) "ABC" else "123",
+                onClick = {
+                    isNumberMode = !isNumberMode
+                    // Reset shift when switching modes
+                    if (!isCapsLock) isShifted = false
+                },
                 modifier = Modifier.weight(1f)
             )
 
@@ -146,8 +175,25 @@ class CboardIME : InputMethodService() {
             )
 
             KeyButton(
+                label = "Paste",
+                onClick = {
+                    val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clipData = clipboardManager.primaryClip
+                    if (clipData != null && clipData.itemCount > 0) {
+                        val text = clipData.getItemAt(0).text
+                        currentInputConnection?.commitText(text, 1)
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
+
+            KeyButton(
                 label = "Enter",
-                onClick = { handleKeyInput("\n") },
+                onClick = {
+                    handleKeyInput("\n")
+                    // Reset number mode after Enter for convenience
+                    if (!isCapsLock) isNumberMode = false
+                },
                 modifier = Modifier.weight(1.5f)
             )
         }
@@ -157,9 +203,23 @@ class CboardIME : InputMethodService() {
         val currentInputConnection = currentInputConnection
         when (key) {
             "\b" -> currentInputConnection.deleteSurroundingText(1, 0) // Backspace
-            "\n" -> currentInputConnection.commitText("\n", 1)
-            " " -> currentInputConnection.commitText(" ", 1)
-            else -> currentInputConnection.commitText(key, 1)
+            "\n" -> {
+                currentInputConnection.commitText("\n", 1)
+                // Reset shift after Enter
+                if (!isCapsLock) isShifted = false
+            }
+            " " -> {
+                currentInputConnection.commitText(" ", 1)
+                // Reset shift after space (for typing convenience)
+                if (!isCapsLock) isShifted = false
+            }
+            else -> {
+                currentInputConnection.commitText(key, 1)
+                // Reset shift after letter input (if not caps lock)
+                if (!isCapsLock && key.length == 1 && key[0].isLetter()) {
+                    isShifted = false
+                }
+            }
         }
     }
 }
