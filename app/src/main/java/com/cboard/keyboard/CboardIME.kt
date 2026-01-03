@@ -36,7 +36,7 @@ class CboardIME : InputMethodService() {
 
     override fun onCreateInputView(): View {
         return ComposeView(this).apply {
-            // Use default composition strategy for InputMethodService
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent {
                 CboardKeyboard()
             }
