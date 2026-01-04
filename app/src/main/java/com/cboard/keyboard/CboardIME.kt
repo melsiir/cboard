@@ -32,41 +32,31 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import androidx.compose.ui.platform.ViewTreeLifecycleOwner
-import androidx.compose.ui.platform.ViewTreeViewModelStoreOwner
-import androidx.compose.ui.platform.ViewTreeSavedStateRegistryOwner
 import com.cboard.keyboard.data.KeyboardSettings
 import com.cboard.keyboard.utils.SettingsManager
 
-class CboardIME : InputMethodService(), LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
+class CboardIME : InputMethodService(), LifecycleOwner, ViewModelStoreOwner {
 
     private lateinit var settingsManager: SettingsManager
     private var settings = KeyboardSettings()
     private val lifecycleRegistry = LifecycleRegistry(this)
-    private val savedStateRegistryController = SavedStateRegistryController.create(this)
-    private val viewModelStore = ViewModelStore()
+    private var composeView: ComposeView? = null
+    private val _viewModelStore = ViewModelStore()
 
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
 
     override val viewModelStore: ViewModelStore
-        get() = viewModelStore
+        get() = _viewModelStore
 
-    override val savedStateRegistry: SavedStateRegistry
-        get() = savedStateRegistryController.savedStateRegistry
 
     override fun onCreate() {
         super.onCreate()
-        savedStateRegistryController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
         settingsManager = SettingsManager(this)
         settings = settingsManager.loadSettings()
     }
 
-    override fun onServiceConnected() {
-        super.onServiceConnected()
-        lifecycleRegistry.currentState = Lifecycle.State.STARTED
-    }
 
     override fun onDestroy() {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
@@ -77,11 +67,6 @@ class CboardIME : InputMethodService(), LifecycleOwner, ViewModelStoreOwner, Sav
         val composeView = ComposeView(this).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         }
-
-        // Set the ViewTree owners to make Compose work in the InputMethodService
-        ViewTreeLifecycleOwner.set(composeView, this)
-        ViewTreeViewModelStoreOwner.set(composeView, this)
-        ViewTreeSavedStateRegistryOwner.set(composeView, this)
 
         composeView.setContent {
             CboardKeyboard()
