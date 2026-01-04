@@ -32,6 +32,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.cboard.keyboard.data.KeyboardSettings
 import com.cboard.keyboard.utils.SettingsManager
 
@@ -56,6 +57,7 @@ class CboardIME : InputMethodService(), LifecycleOwner, ViewModelStoreOwner {
         settingsManager = SettingsManager(this)
         settings = settingsManager.loadSettings()
     }
+
 
 
     override fun onDestroy() {
